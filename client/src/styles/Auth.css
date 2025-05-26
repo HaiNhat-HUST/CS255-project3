@@ -1,0 +1,121 @@
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f0f2f5;
+}
+
+.auth-box {
+  background-color: white;
+  padding: 2.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+  border: 1px solid #e9ecef;
+  width: 100%;
+  max-width: 400px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.auth-box h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #4a148c;
+  font-size: 1.8em;
+  font-weight: bold;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #495057;
+  font-size: 0.95em;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 0.95em;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #673ab7;
+  box-shadow: 0 0 0 2px rgba(103, 58, 183, 0.2);
+}
+
+.auth-button {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #673ab7;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.auth-button:hover {
+  background-color: #5e35b1;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1.25rem;
+  text-align: center;
+  font-size: 0.9em;
+  border: 1px solid #ffcdd2;
+}
+
+.auth-link {
+  text-align: center;
+  margin-top: 1.5rem;
+  color: #6c757d;
+  font-size: 0.95em;
+}
+
+.auth-link span {
+  color: #673ab7;
+  cursor: pointer;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.auth-link span:hover {
+  color: #5e35b1;
+  text-decoration: underline;
+}
+
+.auth-logo {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #4a148c;
+  font-size: 2.5em;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+} 

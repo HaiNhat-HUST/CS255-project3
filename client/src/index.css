@@ -1,0 +1,435 @@
+/* src/index.css */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8f9fa; /* Light grey for areas outside main content */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* --- Sidebar Styles --- */
+.sidebar {
+  width: 260px;
+  background-color: #4a148c; /* Dark Purple */
+  color: white;
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: relative; /* For footer positioning */
+  min-height: 100vh; /* Ensure sidebar takes full height */
+}
+
+.sidebar-logo-container {
+  padding: 0 20px 20px 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 20px;
+}
+
+.sidebar-logo-icon {
+  font-size: 28px;
+  margin-right: 10px;
+  color: #e1bee7; /* Lighter purple for icon */
+}
+
+.sidebar-title {
+  font-size: 1.6em;
+  font-weight: bold;
+}
+
+.sidebar-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-nav-item {
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: #e1bee7; /* Lighter purple for text */
+}
+
+.sidebar-nav-item:hover {
+  background-color: #5e35b1; /* Slightly lighter purple on hover */
+  color: white;
+}
+
+.sidebar-nav-item.active {
+  background-color: #6a1b9a;
+  color: white;
+  font-weight: 500;
+  border-left: 4px solid #ce93d8; /* Active indicator */
+  padding-left: 16px;
+}
+
+.sidebar-nav-item svg { /* Icon styling */
+  margin-right: 15px;
+  font-size: 1.2em;
+}
+
+/* --- Sidebar Footer with Logout Button --- */
+.sidebar-footer {
+  margin-top: auto; /* Push to bottom */
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logout-button {
+  width: 100%;
+  padding: 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #e1bee7;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  font-size: 0.95em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.logout-button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.logout-button:active {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(1px);
+}
+
+/* --- Main Content Styles --- */
+.main-content-area {
+  flex-grow: 1;
+  padding: 20px 30px;
+  background-color: #f0f2f5; /* Light grey for content background */
+  position: relative; /* For User Avatar positioning */
+}
+
+.user-avatar {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #4a148c;
+  cursor: pointer;
+  border: 1px solid #ccc;
+}
+
+
+.page-header h1 {
+  font-size: 1.8em;
+  color: #333;
+  margin-top: 0;
+  margin-bottom: 5px;
+}
+
+.page-header p {
+  font-size: 0.95em;
+  color: #6c757d;
+  margin-bottom: 25px;
+}
+
+/* --- File Browser Header --- */
+.file-browser-controls {
+  margin-bottom: 20px;
+}
+
+.breadcrumb {
+  color: #555;
+  margin-bottom: 15px;
+  font-size: 0.9em;
+}
+
+.actions-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px; /* Gap between search/filter and buttons */
+}
+
+.search-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-grow: 1; /* Allows search to take available space */
+}
+
+.search-input-container {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  flex-grow: 1; /* Makes search input responsive */
+  max-width: 450px; /* Max width for search */
+}
+
+.search-input-container svg {
+  color: #6c757d;
+  margin-right: 8px;
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  flex-grow: 1;
+  font-size: 0.95em;
+}
+
+.btn-icon { /* Filter button */
+  padding: 9px 12px;
+  background-color: white;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: #495057;
+}
+.btn-icon:hover {
+  background-color: #f1f3f5;
+}
+
+.action-buttons-group {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+  transition: background-color 0.2s ease;
+}
+
+.btn-outline {
+  background-color: white;
+  color: #4a148c;
+  border: 1px solid #ab47bc; /* Purple border */
+}
+.btn-outline:hover {
+  background-color: #f3e5f5; /* Very light purple */
+}
+
+.btn-filled {
+  background-color: #673ab7; /* Purple */
+  color: white;
+}
+.btn-filled:hover {
+  background-color: #5e35b1; /* Darker Purple */
+}
+
+/* --- File Grid --- */
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 20px;
+}
+
+.item-card {
+  background-color: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+  border: 1px solid #e9ecef;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.item-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.05);
+  border-color: #adb5bd;
+}
+
+.item-icon {
+  margin-right: 15px;
+  font-size: 2.8em; /* Icon size */
+  flex-shrink: 0;
+}
+.item-icon.folder { color: #ffca28; } /* Yellow for folder */
+.item-icon.archive { color: #ab47bc; } /* Purple for zip/archive */
+.item-icon.image { color: #29b6f6; } /* Light Blue for photo */
+.item-icon.document { color: #ef5350; } /* Red for doc/pdf */
+.item-icon.code { color: #66bb6a; } /* Green for source_code (could be folder too) */
+.item-icon.generic { color: #bdbdbd; } /* Grey for generic file */
+
+
+.item-info {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.item-name {
+  font-weight: 500;
+  color: #212529;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+  font-size: 0.95em;
+}
+
+.item-meta {
+  font-size: 0.8em;
+  color: #6c757d;
+}
+
+.token-table-container {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+  border: 1px solid #e9ecef;
+  overflow-x: auto; /* For responsiveness on small screens */
+}
+
+.token-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.token-table th, .token-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 0.9em;
+}
+
+.token-table th {
+  background-color: #f8f9fa;
+  font-weight: 500;
+  color: #495057;
+}
+
+.token-table td {
+  color: #343a40;
+}
+
+.token-table tr:last-child td {
+  border-bottom: none;
+}
+
+.token-value-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Courier New', Courier, monospace; /* Monospace for token */
+}
+
+.token-value-cell svg {
+  cursor: pointer;
+  color: #6c757d;
+}
+.token-value-cell svg:hover {
+  color: #343a40;
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 500;
+  text-transform: uppercase;
+  display: inline-block; /* Ensures padding and rounded corners work well */
+}
+
+.status-badge.active {
+  background-color: #e6e0f8; /* Light purple */
+  color: #5e35b1; /* Darker purple text */
+}
+
+.status-badge.expired {
+  background-color: #ffe0b2; /* Light orange */
+  color: #ef6c00; /* Darker orange text */
+}
+
+.status-badge.revoked {
+  background-color: #ffcdd2; /* Light red */
+  color: #c62828; /* Darker red text */
+}
+
+.actions-cell svg {
+  cursor: pointer;
+  color: #6c757d;
+  font-size: 1.2em;
+}
+.actions-cell svg:hover {
+  color: #343a40;
+}
+
+
+/* --- Shared With Me Page (Empty State) --- */
+.empty-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+  border: 1px solid #e9ecef;
+  text-align: center;
+  margin-top: 30px; /* Or adjust as needed */
+  min-height: 300px; /* Give it some height */
+}
+
+.empty-state-icon {
+  font-size: 4em; /* Large icon */
+  color: #ab47bc; /* Purple */
+  margin-bottom: 20px;
+  padding: 20px;
+  background-color: #f3e5f5; /* Very light purple */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state-title {
+  font-size: 1.4em;
+  font-weight: 500;
+  color: #343a40;
+  margin-bottom: 10px;
+}
+
+.empty-state-message {
+  font-size: 0.95em;
+  color: #6c757d;
+  max-width: 400px;
+}
