@@ -12,7 +12,7 @@ const {
 const router = express.Router();
 
 // Note: Using POST for createShareToken to include entityType in body and avoid overly long URLs
-router.post('/:entityType(file|folder)/:entityId', protect, createShareToken);
+router.post('/:entityId', protect, createShareToken);
 router.get('/tokens', protect, listUserShareTokens);
 router.put('/tokens/:tokenId/revoke', protect, revokeShareToken);
 router.get('/access/:tokenValue', accessSharedEntity);
