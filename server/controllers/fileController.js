@@ -7,6 +7,7 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const { generateRSAKeyPair } = require('../utils/keyUtils');
 
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads'); // Ensure this directory exists
 
@@ -34,6 +35,17 @@ exports.uploadFile = async (req, res) => {
             return res.status(404).json({ message: 'Parent folder not found or access denied' });
         }
     }
+    //load file buffer
+    const fileBuffer = fs.readFileSync(file.path);
+
+    //gen RSA key pair
+    const {privateKey, publicKeyOwnerPart, publicKeyTTPPart} = generateRSAKeyPair();
+    
+    //encrypt file with private key
+    const encryptedData = Buffer.from(privateKey.encrypt(fileBuffer.toString('binary'), 'RSAES-PKCS1-V1_5'), 'binary');
+    
+    //replace file with encrypted one
+    fs.writeFileSync(filePath, encryptedData);
 
 
     const newFile = new File({
@@ -46,6 +58,7 @@ exports.uploadFile = async (req, res) => {
       keyEncryptionIv,
       uploader: req.user.id,
       folder: folderId || null,
+      KTTP: publicKeyTTPPart
     });
 
     await newFile.save();
@@ -58,6 +71,7 @@ exports.uploadFile = async (req, res) => {
             size: newFile.size, // Consider sending original size from client
             createdAt: newFile.createdAt,
             folder: newFile.folder,
+            ko: publicKeyOwnerPart // storage in local
         }
     });
   } catch (error) {

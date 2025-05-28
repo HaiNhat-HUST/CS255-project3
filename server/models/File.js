@@ -42,6 +42,18 @@ const fileSchema = new mongoose.Schema({
     ref: 'Folder',
     default: null,
   },
+  Ko: {
+    type: String,
+    required: false,
+  },
+  KTTP: {
+    type: String,
+    required: false,
+  },
+  fullEncFileKey: {
+    type: String,
+    required: false,
+  },
 }, { timestamps: true });
 
 const File = mongoose.model('File', fileSchema);
