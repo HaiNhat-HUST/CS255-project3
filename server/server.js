@@ -7,7 +7,8 @@ const path = require('path');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
-// const fileRoutes = require('./routes/fileRoutes'); // <--- Add this
+const fileRoutes = require('./routes/fileRoutes');
+const userRoutes = require('./routes/userRoutes');
 // const shareRoutes = require('./routes/shareRoutes'); // <--- Add this
 
 
@@ -20,7 +21,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
-// app.use('/api/files', fileRoutes); // <--- Use file routes
+app.use('/api/files', fileRoutes); // <--- Use file routes
+app.use('/api/user', userRoutes);
 // app.use('/api/share', shareRoutes); // <--- Use share routes
 
 

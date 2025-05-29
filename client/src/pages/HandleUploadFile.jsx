@@ -1,16 +1,48 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import CryptoJS from 'crypto-js';
 import JSEncrypt from 'jsencrypt';
 
 const HandleUploadFile = ({ onUploadSuccess }) => {
   const [file, setFile] = useState(null);
+  const [userPublicKey, setUserPublicKey] = useState(null); // State để lưu public key
+  const [error, setError] = useState(null); // State để lưu lỗi
   const fileInputRef = useRef(null);
 
-  const userPublicKey = localStorage.getItem('userPublicKey');
-  if (!userPublicKey) {
-    console.error('No public key found. Please generate or load it.');
-    return <div>Error: No public key available.</div>;
-  }
+  // Lấy public key từ server khi component mount
+  useEffect(() => {
+    const fetchPublicKey = async () => {
+      try {
+        const token = localStorage.getItem('token'); // Giả định token được lưu trong localStorage
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        const response = await fetch('http://localhost:5001/api/user/public-key', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`, // Gửi token xác thực
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.userPublicKey) {
+          throw new Error('Public key not found on server');
+        }
+
+        setUserPublicKey(data.userPublicKey);
+      } catch (err) {
+        console.error('Error fetching public key:', err.message);
+        setError(err.message);
+      }
+    };
+
+    fetchPublicKey();
+  }, []); // Chỉ gọi 1 lần khi component mount
 
   const onFileChange = (event) => {
     setFile(event.target.files[0]);
@@ -19,6 +51,11 @@ const HandleUploadFile = ({ onUploadSuccess }) => {
   const handleUpload = async () => {
     if (!file) {
       alert('Please select a file to upload!');
+      return;
+    }
+
+    if (!userPublicKey) {
+      alert('Cannot upload: Public key not available');
       return;
     }
 
@@ -55,9 +92,13 @@ const HandleUploadFile = ({ onUploadSuccess }) => {
         { userId: 'user456', permission: 'write' },
       ]));
 
+      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:5001/api/upload', {
         method: 'POST',
         body: formData,
+        headers: {
+          'Authorization': `Bearer ${token}`, // Gửi token xác thực
+        },
       });
 
       if (!response.ok) {
@@ -68,12 +109,10 @@ const HandleUploadFile = ({ onUploadSuccess }) => {
       console.log('File uploaded successfully:', data);
       alert('File uploaded successfully! File ID: ' + data.file.fileId);
 
-      // Gọi callback để thông báo upload thành công (nếu cần cập nhật danh sách file)
       if (onUploadSuccess) {
         onUploadSuccess(data.file);
       }
 
-      // Reset file input
       setFile(null);
       fileInputRef.current.value = null;
     } catch (error) {
@@ -81,6 +120,16 @@ const HandleUploadFile = ({ onUploadSuccess }) => {
       alert('Upload failed: ' + error.message);
     }
   };
+
+  // Hiển thị lỗi nếu không lấy được public key
+  if (error) {
+    return <div>Error: {error}. Please ensure you are logged in and have a public key.</div>;
+  }
+
+  // Hiển thị loading nếu chưa lấy được public key
+  if (!userPublicKey) {
+    return <div>Loading public key...</div>;
+  }
 
   return (
     <div>
