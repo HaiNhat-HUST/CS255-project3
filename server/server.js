@@ -10,6 +10,7 @@ const authRoutes = require('./routes/authRoutes');
 const fileRoutes = require('./routes/fileRoutes'); // <--- Add this
 const shareRoutes = require('./routes/shareRoutes'); // <--- Add this
 
+
 connectDB();
 const app = express();
 

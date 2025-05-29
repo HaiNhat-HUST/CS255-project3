@@ -141,87 +141,62 @@ exports.getFileMetadata = async (req, res) => {
     }
 };
 
-// @desc    Download an encrypted file
-// @route   GET /api/files/:fileId/download
-// @access  Private
-exports.downloadFile = async (req, res) => {
+
+// hainhat code, do not remove
+exports.shareFile = async(req, res) => {
   try {
-    const file = await File.findOne({ _id: req.params.fileId, uploader: req.user.id });
+    const { fileId } = req.params;
+    const { recipientUserId, encryptedFileSymmetricKeyForRecipient } = req.body;
+    const currentUserId = req.user.id;
 
-    if (!file) {
-      return res.status(404).json({ message: 'File not found or access denied' });
+    // check user permission to share the required file
+    const file = await File.findById(fileId);
+      if (!file) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+      if (file.owner.toString() !== currentUserId) {
+        return res.status(403).json({ message: 'Forbidden: You do not own this file' });
+      }
+
+    // check validity of recepient
+    const recipientUser = await User.findById(recipientUserId);
+      if (!recipientUser) {
+        return res.status(404).json({ message: 'Recipient user not found' });
+      }
+
+    // check is this file is already shared to this user
+    const existingShare = await Share.findOne({
+        file: fileId,
+        sharedWith: recipientUserId,
+      });
+      if (existingShare) {
+        return res.status(409).json({ message: 'File already shared with this user' });
+      }
+
+    // save the share data to share model
+
+    const newShare = new Share({
+      file: fileId,
+      sharedBy: currentUserId,
+      sharedWith: recipientUserId,
+      encryptedFileSymmetricKeyForRecipient: encryptedFileSymmetricKeyForRecipient,
+      // access level is 'view' by default
+    })
+
+    await newShare.save();
+
+    // update isShared in filemodel
+    if (!file.isShared) {
+      file.isShared = true;
+      await file.save();
     }
 
-    const filePath = path.join(UPLOADS_DIR, file.encryptedFilename);
+    res.status(200).json({ message: 'File shared successfully' });
 
-    if (fs.existsSync(filePath)) {
-      res.setHeader('Content-Disposition', `attachment; filename="${file.originalFilename}"`); // Suggest original name to client
-      res.setHeader('Content-Type', file.mimeType); // Set original mime type
-      res.download(filePath, file.originalFilename); // Serves the file
-    } else {
-      res.status(404).json({ message: 'File data not found on server' });
-    }
   } catch (error) {
-    console.error('Download Error:', error);
-    if (error.kind === 'ObjectId') {
-        return res.status(404).json({ message: 'File not found (invalid ID format)' });
-    }
-    res.status(500).json({ message: 'Server error during file download', error: error.message });
+    console.error('Error when sharing file:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-};
+}
 
-// @desc    Create a new folder
-// @route   POST /api/folders
-// @access  Private
-exports.createFolder = async (req, res) => {
-  try {
-    const { name, parentFolderId } = req.body;
-    if (!name) {
-      return res.status(400).json({ message: 'Folder name is required' });
-    }
-
-    const parentQuery = parentFolderId === 'null' || !parentFolderId ? null : parentFolderId;
-
-    // Check if parent folder exists and belongs to user (if specified)
-    if (parentQuery) {
-        const parent = await Folder.findOne({ _id: parentQuery, owner: req.user.id });
-        if (!parent) {
-            return res.status(404).json({ message: "Parent folder not found or access denied" });
-        }
-    }
-
-    // Check for duplicate folder name in the same location for this user
-    const existingFolder = await Folder.findOne({
-        name,
-        owner: req.user.id,
-        parentFolder: parentQuery
-    });
-
-    if (existingFolder) {
-        return res.status(400).json({ message: `Folder "${name}" already exists in this location.` });
-    }
-
-    const newFolder = new Folder({
-      name,
-      owner: req.user.id,
-      parentFolder: parentQuery,
-    });
-
-    await newFolder.save();
-    res.status(201).json({
-        message: 'Folder created successfully',
-        folder: {
-            _id: newFolder._id,
-            name: newFolder.name,
-            parentFolder: newFolder.parentFolder,
-            createdAt: newFolder.createdAt
-        }
-    });
-  } catch (error) {
-    console.error('Create Folder Error:', error);
-    if (error.code === 11000) { // Duplicate key error
-        return res.status(400).json({ message: `A folder with that name already exists in this location.` });
-    }
-    res.status(500).json({ message: 'Server error creating folder', error: error.message });
-  }
-};
+// controller cho viec xem file
