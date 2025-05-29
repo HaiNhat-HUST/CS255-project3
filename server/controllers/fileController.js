@@ -16,67 +16,81 @@ const UPLOADS_DIR = path.join(__dirname, '..', 'uploads'); // Ensure this direct
 // @access  Private
 exports.uploadFile = async (req, res) => {
   try {
-    const { originalFilename, encryptedFileKey, iv, keyEncryptionIv, folderId } = req.body; // Metadata from client
-    const file = req.file; // Uploaded encrypted blob from multer
+    const { originalFilename, folderId, accessControlList } = req.body; // Client gửi ACL
+    const file = req.file; // File gốc từ multer
 
     if (!file) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
-    if (!originalFilename || !encryptedFileKey || !iv || !keyEncryptionIv) {
+    if (!originalFilename || !accessControlList) {
+      fs.unlinkSync(file.path);
       return res.status(400).json({ message: 'Missing required file metadata' });
     }
 
-    // Check if parent folder exists and belongs to the user (if folderId is provided)
     if (folderId) {
-        const parentFolder = await Folder.findOne({ _id: folderId, owner: req.user.id });
-        if (!parentFolder) {
-            // Clean up uploaded file if folder is invalid
-            fs.unlinkSync(file.path);
-            return res.status(404).json({ message: 'Parent folder not found or access denied' });
-        }
+      const parentFolder = await Folder.findOne({ _id: folderId, owner: req.user.id });
+      if (!parentFolder) {
+        fs.unlinkSync(file.path);
+        return res.status(404).json({ message: 'Parent folder not found or access denied' });
+      }
     }
-    //load file buffer
-    const fileBuffer = fs.readFileSync(file.path);
 
-    //gen RSA key pair
-    const {privateKey, publicKeyOwnerPart, publicKeyTTPPart} = generateRSAKeyPair();
-    
-    //encrypt file with private key
-    const encryptedData = Buffer.from(privateKey.encrypt(fileBuffer.toString('binary'), 'RSAES-PKCS1-V1_5'), 'binary');
-    
-    //replace file with encrypted one
-    fs.writeFileSync(filePath, encryptedData);
+    // Tạo cặp khóa RSA
+    const key = new RSA({ b: 2048 });
+    const privateKey = key.exportKey('private');
+    const publicKey = key.exportKey('public');
 
+    // Mã hóa file
+    const fileContent = fs.readFileSync(file.path);
+    const encryptedFile = new RSA(privateKey).encryptPrivate(fileContent, 'buffer');
 
+    // Phân chia khóa công khai
+    const publicKeyBytes = Buffer.from(publicKey);
+    const parts = Secrets.split(publicKeyBytes, { shares: 2, threshold: 2 });
+    const key_o = parts[1];
+    const key_ttp = parts[2];
+
+    // Tải file lên S3
+    const fileId = require('crypto').randomBytes(16).toString('hex');
+    const s3Params = {
+      Bucket: process.env.S3_BUCKET,
+      Key: fileId,
+      Body: encryptedFile,
+    };
+    await s3.upload(s3Params).promise();
+
+    // Lưu metadata
     const newFile = new File({
+      fileId,
       originalFilename,
-      encryptedFilename: file.filename, // Multer provides this unique filename
       mimeType: file.mimetype,
-      size: file.size, // This is the size of the encrypted blob, client should send original size too if needed for display
-      encryptedFileKey,
-      iv,
-      keyEncryptionIv,
+      size: file.size,
+      encryptedFileKey: key_ttp.toString('base64'),
+      accessControlList: JSON.parse(accessControlList),
       uploader: req.user.id,
       folder: folderId || null,
-      KTTP: publicKeyTTPPart
     });
-
     await newFile.save();
+
+    // Xóa file cục bộ và khóa riêng
+    fs.unlinkSync(file.path);
+    delete privateKey;
+
     res.status(201).json({
-        message: 'File uploaded successfully',
-        file: {
-            _id: newFile._id,
-            originalFilename: newFile.originalFilename,
-            mimeType: newFile.mimeType,
-            size: newFile.size, // Consider sending original size from client
-            createdAt: newFile.createdAt,
-            folder: newFile.folder,
-            ko: publicKeyOwnerPart // storage in local
-        }
+      message: 'File uploaded successfully',
+      file: {
+        _id: newFile._id,
+        fileId: newFile.fileId,
+        originalFilename: newFile.originalFilename,
+        mimeType: newFile.mimeType,
+        size: newFile.size,
+        createdAt: newFile.createdAt,
+        folder: newFile.folder,
+        key_o: key_o.toString('base64'),
+      },
     });
   } catch (error) {
     console.error('Upload Error:', error);
-    // If a file was uploaded and an error occurred, try to delete it
     if (req.file && req.file.path) {
       try {
         fs.unlinkSync(req.file.path);
@@ -85,6 +99,30 @@ exports.uploadFile = async (req, res) => {
       }
     }
     res.status(500).json({ message: 'Server error during file upload', error: error.message });
+  }
+};
+
+exports.accessFile = async (req, res) => {
+  try {
+    const { fileId, key_o } = req.body;
+    const file = await File.findOne({ fileId });
+    if (!file || !file.accessControlList.some(u => u.userId.toString() === req.user.id)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const key_ttp = Buffer.from(file.encryptedFileKey, 'base64');
+    const publicKeyBytes = Secrets.join([Buffer.from(key_o, 'base64'), key_ttp]);
+    const publicKey = new RSA().importKey(publicKeyBytes);
+
+    const s3Params = { Bucket: process.env.S3_BUCKET, Key: fileId };
+    const encryptedFile = await s3.getObject(s3Params).promise();
+
+    const decryptedFile = new RSA(publicKey).decryptPublic(encryptedFile.Body, 'buffer');
+
+    res.set('Content-Type', file.mimeType);
+    res.send(decryptedFile);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error during file access', error: error.message });
   }
 };
 

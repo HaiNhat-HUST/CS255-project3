@@ -1,16 +1,15 @@
-// models/File.js
 const mongoose = require('mongoose');
 
 const fileSchema = new mongoose.Schema({
+  fileId: { // ID duy nhất của file trên Cloud Storage (ví dụ: AWS S3 key)
+    type: String,
+    required: true,
+    unique: true,
+  },
   originalFilename: { // Filename as displayed to the user (unencrypted)
     type: String,
     required: true,
     trim: true,
-  },
-  encryptedFilename: { // The actual name of the stored encrypted file on the server (e.g., a UUID)
-    type: String,
-    required: true,
-    unique: true,
   },
   mimeType: {
     type: String,
@@ -20,17 +19,16 @@ const fileSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  encryptedFileKey: { // File's symmetric key, encrypted with user's master key (base64)
+  encryptedFileKey: { // Phần khóa công khai lưu tại TTP (K_ttp), base64
     type: String,
     required: true,
   },
-  iv: { // IV for AES-GCM encryption of file content (base64)
-    type: String,
-    required: true,
-  },
-  keyEncryptionIv: { // IV used for encrypting the encryptedFileKey (base64)
-    type: String,
-    required: true,
+  accessControlList: { // Danh sách quyền truy cập (U_APL)
+    type: [{
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+      permission: { type: String, enum: ['read', 'write'], required: true },
+    }],
+    default: [],
   },
   uploader: {
     type: mongoose.Schema.Types.ObjectId,
@@ -42,18 +40,6 @@ const fileSchema = new mongoose.Schema({
     ref: 'Folder',
     default: null,
   },
-  KTTP: {//Half of public key
-    type: String,
-    required: false,
-  },
-  accessList: [
-    {userId: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
-    permiss: {
-      type: String, 
-      enum: ['read', 'write'], 
-      default: 'read'}, 
-    },
-  ],
 }, { timestamps: true });
 
 const File = mongoose.model('File', fileSchema);
