@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaShieldAlt } from 'react-icons/fa';
 import '../styles/Auth.css';
 
-function LoginPage({onLoginSuccess}) {
+function LoginPage({ onLoginSuccess }) {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -32,13 +32,18 @@ function LoginPage({onLoginSuccess}) {
       });
 
       const data = await response.json();
-
+      console.log("Login response:", response);
+      console.log("Login data:", data); 
       if (!response.ok) {
         throw new Error(data.message || 'Login failed');
       }
 
       // Store the token in localStorage
       localStorage.setItem('token', data.token);
+      localStorage.setItem('userId', data._id);
+      localStorage.setItem('email', data.email);
+      // localStorage.setItem('keySalt' , data.keySalt);
+      // localStorage.setItem('encryptedPrivateKey', data.encryptedPrivateKey);
       onLoginSuccess();
       navigate('/myfiles'); // Redirect to home page after successful login
     } catch (err) {

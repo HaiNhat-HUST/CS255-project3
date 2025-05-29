@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaShieldAlt } from 'react-icons/fa';
 import '../styles/Auth.css';
-
+import { generateUserKeyPair, encryptPrivateKeyWithPassphrase } from '../../utils/keyUtils';
 function RegisterPage() {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
     confirmPassword: '',
+    passphrase: '',
   });
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -34,7 +35,14 @@ function RegisterPage() {
     //         setError('Password must contain uppercase, lowercase, digit, special char and be at least 8 characters');
     //         return;
     //     }
+    if (!formData.passphrase || formData.passphrase.length < 6) {
+      setError('Please provide a strong passphrase for securing your file')
+    }
     try {
+      const { publicKeyPem, privateKeyPem } = await generateUserKeyPair();
+      const { encryptedPrivateKey, saltBase64 } = await encryptPrivateKeyWithPassphrase(privateKeyPem, formData.passphrase);
+
+
       const response = await fetch('http://localhost:5001/api/auth/register', {
         method: 'POST',
         headers: {
@@ -44,6 +52,7 @@ function RegisterPage() {
           username: formData.username,
           email: formData.email,
           password: formData.password,
+          userPublicKey: publicKeyPem,
         }),
       });
 
@@ -54,9 +63,17 @@ function RegisterPage() {
         throw new Error(data.message || data.error || 'Server error during registration');
       }
 
-      // Store the token in localStorage
-      localStorage.setItem('token', data.token);
-      navigate('/myfiles'); // Redirect to home page after successful registration
+      // Store the key  in localStorage
+      localStorage.setItem('encryptedPrivateKey', encryptedPrivateKey);
+      localStorage.setItem('keySalt', saltBase64);
+
+      // const blob = new Blob([privateKeyPem], { type: 'text/plain' });
+      // const a = document.createElement('a');
+      // a.href = URL.createObjectURL(blob);
+      // a.download = 'private_key.pem';
+      // a.click();
+
+      navigate('/'); // Redirect to home page after successful registration
     } catch (err) {
       setError(err.message);
     }
@@ -117,6 +134,18 @@ function RegisterPage() {
               onChange={handleChange}
               required
               placeholder="Confirm your password"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="passphrase">Passphrase</label>
+            <input
+              type="password"
+              id="passphrase"
+              name="passphrase"
+              value={formData.passphrase}
+              onChange={handleChange}
+              required
+              placeholder="Create a password"
             />
           </div>
           <button type="submit" className="auth-button">Create Account</button>

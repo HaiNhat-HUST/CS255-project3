@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     match: [/.+\@.+\..+/, 'Please enter a valid email address.'],
   },
-  password: { // This will store the hashed password
+  passwordHash: { // This will store the hashed password
     type: String,
     required: [true, 'Password is required.'],
     minlength: [6, 'Password must be at least 6 characters long.'], // Enforce minimum length for security
@@ -38,19 +38,19 @@ const userSchema = new mongoose.Schema({
 
 // Method to compare entered password with hashed password
 userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+  return await bcrypt.compare(enteredPassword, this.passwordHash);
 };
 
 // Middleware to hash password before saving
 userSchema.pre('save', async function (next) {
   // Only hash the password if it has been modified (or is new)
-  if (!this.isModified('password')) {
+  if (!this.isModified('passwordHash')) {
     return next();
   }
 
   try {
     const salt = await bcrypt.genSalt(parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10);
-    this.password = await bcrypt.hash(this.password, salt);
+    this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
     next();
   } catch (error) {
     next(error);
