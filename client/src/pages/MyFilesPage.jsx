@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import FileBrowserControls from '../components/files/FileBrowserControls';
 import FileGrid from '../components/files/FileGrid';
+import HandleUploadFile from './HandleUploadFile'; // Import component
 
-// Mock data (replace with API call)
+// Mock data (thay thế bằng API call)
 const mockFilesData = [
   { id: 'folder1', type: 'folder', name: 'Documents', itemCount: 2 },
   { id: 'folder2', type: 'folder', name: 'Photos', itemCount: 1 },
@@ -13,7 +14,6 @@ const mockFilesData = [
   { id: 'file4', type: 'file', name: 'logo.png', size: '350 KB', date: '2023-10-12' },
   { id: 'file5', type: 'file', name: 'notes.txt', size: '10 KB', date: '2023-10-10' },
 ];
-
 
 const MyFilesPage = () => {
   const [items, setItems] = useState([]);
@@ -27,7 +27,6 @@ const MyFilesPage = () => {
 
   const handleSearchChange = (term) => {
     setSearchTerm(term);
-    // Basic client-side filtering for demo
     if (!term) {
       setItems(mockFilesData);
     } else {
@@ -40,7 +39,20 @@ const MyFilesPage = () => {
 
   const handleFilter = () => alert('Filter clicked!');
   const handleCreateFolder = () => alert('Create Folder clicked!');
-  const handleUploadFile = () => alert('Upload File clicked!');
+
+  // Callback để cập nhật danh sách file sau khi upload thành công
+  const handleUploadSuccess = (newFile) => {
+    setItems((prevItems) => [
+      ...prevItems,
+      {
+        id: newFile.fileId,
+        type: 'file',
+        name: newFile.originalFilename,
+        size: newFile.size,
+        date: newFile.createdAt,
+      },
+    ]);
+  };
 
   return (
     <>
@@ -53,8 +65,11 @@ const MyFilesPage = () => {
         onSearchChange={handleSearchChange}
         onFilter={handleFilter}
         onCreateFolder={handleCreateFolder}
-        onUploadFile={handleUploadFile}
+        onUploadFile={() => {}} // Không cần hàm này nữa, sẽ sử dụng component HandleUploadFile
       />
+
+      {/* Sử dụng HandleUploadFile component */}
+      <HandleUploadFile onUploadSuccess={handleUploadSuccess} />
 
       <FileGrid items={items} />
     </>
