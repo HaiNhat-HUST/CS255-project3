@@ -7,8 +7,9 @@ const path = require('path');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
-const fileRoutes = require('./routes/fileRoutes'); // <--- Add this
-const shareRoutes = require('./routes/shareRoutes'); // <--- Add this
+// const fileRoutes = require('./routes/fileRoutes'); // <--- Add this
+// const shareRoutes = require('./routes/shareRoutes'); // <--- Add this
+
 
 connectDB();
 const app = express();
@@ -19,8 +20,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/files', fileRoutes); // <--- Use file routes
-app.use('/api/share', shareRoutes); // <--- Use share routes
+// app.use('/api/files', fileRoutes); // <--- Use file routes
+// app.use('/api/share', shareRoutes); // <--- Use share routes
 
 
 // Create uploads directory if it doesn't exist (moved to fileRoutes for multer init)

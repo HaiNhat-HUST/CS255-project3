@@ -15,5 +15,12 @@ const fileSchema = new mongoose.Schema({
   folder: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder', default: null },
 }, { timestamps: true });
 
-const File = mongoose.model('File', fileSchema);
-module.exports = File;
+
+// // Compound index for owner and originalName in a specific folder (if folders are used)
+// // to prevent user from uploading files with same name in same location.
+// fileSchema.index({ owner: 1, folder: 1, originalName: 1 }, { unique: true, partialFilterExpression: { folder: { $type: "objectId" } } });
+// fileSchema.index({ owner: 1, originalName: 1 }, { unique: true, partialFilterExpression: { folder: null } });
+
+
+// const File = mongoose.model('File', fileSchema);
+// module.exports = File;
