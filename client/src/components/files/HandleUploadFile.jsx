@@ -1,49 +1,36 @@
 import { useState, useRef, useEffect } from 'react';
 import CryptoJS from 'crypto-js';
 import JSEncrypt from 'jsencrypt';
+import 'crypto-js/lib-typedarrays'; // Ensure typed array support
 
 const HandleUploadFile = ({ onUploadSuccess }) => {
-  console.log('handleUpload called');
   const [file, setFile] = useState(null);
-  const [userPublicKey, setUserPublicKey] = useState(null); // State để lưu public key
-  const [error, setError] = useState(null); // State để lưu lỗi
+  const [userPublicKey, setUserPublicKey] = useState(null);
+  const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Lấy public key từ server khi component mount
   useEffect(() => {
-    const fetchPublicKey = async () => {
+    const fetchOrGeneratePublicKey = async () => {
       try {
-        const token = localStorage.getItem('token'); // Giả định token được lưu trong localStorage
-        if (!token) {
-          throw new Error('No authentication token found');
-        }
-
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error('No authentication token found');
         const response = await fetch('http://localhost:5001/api/user/public-key', {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`, // Gửi token xác thực
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
-        if (!data.userPublicKey) {
-          throw new Error('Public key not found on server');
-        }
-
         setUserPublicKey(data.userPublicKey);
       } catch (err) {
         console.error('Error fetching public key:', err.message);
         setError(err.message);
       }
     };
-
-    fetchPublicKey();
-  }, []); // Chỉ gọi 1 lần khi component mount
+    fetchOrGeneratePublicKey();
+  }, []);
 
   const onFileChange = (event) => {
     setFile(event.target.files[0]);
@@ -54,34 +41,40 @@ const HandleUploadFile = ({ onUploadSuccess }) => {
       alert('Please select a file to upload!');
       return;
     }
-
     if (!userPublicKey) {
       alert('Cannot upload: Public key not available');
       return;
     }
-
     try {
       const fileContent = await file.arrayBuffer();
-      const fsk = CryptoJS.lib.WordArray.random(32);
-      const iv = CryptoJS.lib.WordArray.random(12);
-      const encrypted = CryptoJS.AES.encrypt(CryptoJS.lib.WordArray.create(fileContent), fsk, {
+      if (!fileContent || fileContent.byteLength === 0) {
+        throw new Error('File content is empty or invalid');
+      }
+
+      const fsk = CryptoJS.lib.WordArray.random(32); // 256-bit key
+      const iv = CryptoJS.lib.WordArray.random(12); // 12 bytes for GCM
+      const wordArray = CryptoJS.lib.WordArray.create(fileContent);
+
+      const encrypted = CryptoJS.AES.encrypt(wordArray, fsk, {
         iv: iv,
-        mode: CryptoJS.mode.GCM,
-        padding: CryptoJS.pad.Pkcs7,
+        mode: CryptoJS.mode.GCM, // No padding for GCM
       });
+
       const encryptedData = encrypted.ciphertext.toString(CryptoJS.enc.Base64);
-      const authTag = encrypted.authTag.toString(CryptoJS.enc.Base64);
 
       const encrypt = new JSEncrypt();
       encrypt.setPublicKey(userPublicKey);
-      const fskEncrypted = encrypt.encrypt(fsk.toString(CryptoJS.enc.Base64));
+      const fskBase64 = fsk.toString(CryptoJS.enc.Base64);
+      const fskEncrypted = encrypt.encrypt(fskBase64);
+      if (!fskEncrypted) {
+        throw new Error('RSA encryption of FSK failed');
+      }
 
-      const hash = CryptoJS.SHA256(CryptoJS.lib.WordArray.create(fileContent)).toString(CryptoJS.enc.Hex);
+      const hash = CryptoJS.SHA256(wordArray).toString(CryptoJS.enc.Hex);
 
       const formData = new FormData();
       formData.append('encryptedData', encryptedData);
       formData.append('iv', iv.toString(CryptoJS.enc.Base64));
-      formData.append('authTag', authTag);
       formData.append('fskEncrypted', fskEncrypted);
       formData.append('hash', hash);
       formData.append('originalFilename', file.name);
@@ -97,40 +90,23 @@ const HandleUploadFile = ({ onUploadSuccess }) => {
       const response = await fetch('http://localhost:5001/api/upload', {
         method: 'POST',
         body: formData,
-        headers: {
-          'Authorization': `Bearer ${token}`, // Gửi token xác thực
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
-      console.log('File uploaded successfully:', data);
       alert('File uploaded successfully! File ID: ' + data.file.fileId);
-
-      if (onUploadSuccess) {
-        onUploadSuccess(data.file);
-      }
-
+      if (onUploadSuccess) onUploadSuccess(data.file);
       setFile(null);
       fileInputRef.current.value = null;
     } catch (error) {
-      console.error('Upload failed:', error.message);
+      console.error('Upload failed:', error.message, error.stack);
       alert('Upload failed: ' + error.message);
     }
   };
 
-  // Hiển thị lỗi nếu không lấy được public key
-  if (error) {
-    return <div>Error: {error}. Please ensure you are logged in and have a public key.</div>;
-  }
-
-  // Hiển thị loading nếu chưa lấy được public key
-  if (!userPublicKey) {
-    return <div>Loading public key...</div>;
-  }
+  if (error) return <div>Error: {error}. Please ensure you are logged in and try again.</div>;
+  if (!userPublicKey) return <div>Fetching public key...</div>;
 
   return (
     <div>

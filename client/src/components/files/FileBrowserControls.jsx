@@ -24,9 +24,9 @@ const FileBrowserControls = ({ onSearchChange, onFilter, onCreateFolder, onUploa
           <button className="btn btn-outline" onClick={onCreateFolder}>
             <FaFolderPlus /> Create Folder
           </button>
-          <button className="btn btn-filled" onClick={onUploadFile}>
+          {/* <button className="btn btn-filled" onClick={onUploadFile}>
             <FaUpload /> Upload File
-          </button>
+          </button> */}
         </div>
       </div>
     </div>

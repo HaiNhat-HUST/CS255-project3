@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import FileBrowserControls from '../components/files/FileBrowserControls';
 import FileGrid from '../components/files/FileGrid';
-import HandleUploadFile from './HandleUploadFile'; // Import component
+import HandleUploadFile from '../components/files/HandleUploadFile'; // Import component
 
 // Mock data (thay thế bằng API call)
 const mockFilesData = [
@@ -16,6 +16,7 @@ const mockFilesData = [
 ];
 
 const MyFilesPage = () => {
+  console.log('MyFilesPage rendered');
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
 
