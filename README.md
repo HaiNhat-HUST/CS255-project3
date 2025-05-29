@@ -3,3 +3,4 @@
 2. cd client && npm run dev
 3. cd server && npm start
 
+# file sharing
