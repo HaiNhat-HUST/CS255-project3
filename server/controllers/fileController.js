@@ -16,65 +16,54 @@ const UPLOADS_DIR = path.join(__dirname, '..', 'uploads'); // Ensure this direct
 // @access  Private
 exports.uploadFile = async (req, res) => {
   try {
-    const { originalFilename, folderId, accessControlList } = req.body; // Client gửi ACL
-    const file = req.file; // File gốc từ multer
+    const {
+      encryptedData,
+      iv,
+      authTag,
+      fskEncrypted,
+      hash,
+      originalFilename,
+      mimeType,
+      size,
+      folderId,
+      accessControlList,
+    } = req.body;
 
-    if (!file) {
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
-    if (!originalFilename || !accessControlList) {
-      fs.unlinkSync(file.path);
-      return res.status(400).json({ message: 'Missing required file metadata' });
+    if (!encryptedData || !iv || !authTag || !fskEncrypted || !hash || !originalFilename) {
+      return res.status(400).json({ message: 'Missing required file data' });
     }
 
+    // Kiểm tra folder cha
     if (folderId) {
       const parentFolder = await Folder.findOne({ _id: folderId, owner: req.user.id });
       if (!parentFolder) {
-        fs.unlinkSync(file.path);
         return res.status(404).json({ message: 'Parent folder not found or access denied' });
       }
     }
 
-    // Tạo cặp khóa RSA
-    const key = new RSA({ b: 2048 });
-    const privateKey = key.exportKey('private');
-    const publicKey = key.exportKey('public');
-
-    // Mã hóa file
-    const fileContent = fs.readFileSync(file.path);
-    const encryptedFile = new RSA(privateKey).encryptPrivate(fileContent, 'buffer');
-
-    // Phân chia khóa công khai
-    const publicKeyBytes = Buffer.from(publicKey);
-    const parts = Secrets.split(publicKeyBytes, { shares: 2, threshold: 2 });
-    const key_o = parts[1];
-    const key_ttp = parts[2];
-
-    // Tải file lên S3
+    // Tải encrypted data lên S3
     const fileId = require('crypto').randomBytes(16).toString('hex');
     const s3Params = {
       Bucket: process.env.S3_BUCKET,
       Key: fileId,
-      Body: encryptedFile,
+      Body: Buffer.from(encryptedData, 'base64'), // Giải mã base64 để lưu binary
+      Metadata: { iv, authTag }, // Lưu IV và AuthTag trong metadata S3
     };
     await s3.upload(s3Params).promise();
 
-    // Lưu metadata
+    // Lưu metadata vào database
     const newFile = new File({
       fileId,
       originalFilename,
-      mimeType: file.mimetype,
-      size: file.size,
-      encryptedFileKey: key_ttp.toString('base64'),
+      mimeType,
+      size: parseInt(size),
+      encryptedFileKey: fskEncrypted, // FSK_encrypted
+      hash, // F_hash
       accessControlList: JSON.parse(accessControlList),
       uploader: req.user.id,
       folder: folderId || null,
     });
     await newFile.save();
-
-    // Xóa file cục bộ và khóa riêng
-    fs.unlinkSync(file.path);
-    delete privateKey;
 
     res.status(201).json({
       message: 'File uploaded successfully',
@@ -86,41 +75,33 @@ exports.uploadFile = async (req, res) => {
         size: newFile.size,
         createdAt: newFile.createdAt,
         folder: newFile.folder,
-        key_o: key_o.toString('base64'),
       },
     });
   } catch (error) {
     console.error('Upload Error:', error);
-    if (req.file && req.file.path) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (unlinkErr) {
-        console.error('Error deleting orphaned upload file:', unlinkErr);
-      }
-    }
     res.status(500).json({ message: 'Server error during file upload', error: error.message });
   }
 };
 
 exports.accessFile = async (req, res) => {
   try {
-    const { fileId, key_o } = req.body;
+    const { fileId } = req.body;
     const file = await File.findOne({ fileId });
     if (!file || !file.accessControlList.some(u => u.userId.toString() === req.user.id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const key_ttp = Buffer.from(file.encryptedFileKey, 'base64');
-    const publicKeyBytes = Secrets.join([Buffer.from(key_o, 'base64'), key_ttp]);
-    const publicKey = new RSA().importKey(publicKeyBytes);
-
     const s3Params = { Bucket: process.env.S3_BUCKET, Key: fileId };
     const encryptedFile = await s3.getObject(s3Params).promise();
+    const { iv, authTag } = encryptedFile.Metadata;
 
-    const decryptedFile = new RSA(publicKey).decryptPublic(encryptedFile.Body, 'buffer');
-
-    res.set('Content-Type', file.mimeType);
-    res.send(decryptedFile);
+    res.status(200).json({
+      encryptedData: encryptedFile.Body.toString('base64'),
+      iv,
+      authTag,
+      fskEncrypted: file.encryptedFileKey,
+      hash: file.hash,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error during file access', error: error.message });
   }

@@ -37,10 +37,11 @@ const upload = multer({
     limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit, adjust as needed
 }); // Middleware for single file upload
 
-router.post('/upload', protect, upload.single('encryptedFileBlob'), uploadFile); // 'encryptedFileBlob' is the field name in FormData
+router.post('/upload', upload.none(), fileController.uploadFile); // Sử dụng upload.none() vì file đã mã hóa
 router.get('/', protect, listFilesAndFolders);
 router.get('/:fileId/metadata', protect, getFileMetadata);
 router.get('/:fileId/download', protect, downloadFile);
 router.post('/folders', protect, createFolder); // Use /folders for folder creation
+router.post('/access-file', fileController.accessFile); // Truy cập và giải mã file
 
 module.exports = router;
