@@ -57,10 +57,53 @@ export async function encryptPrivateKeyWithPassphrase(privateKeyPem, passphrase)
     enc.encode(privateKeyPem)
   );
 
-  const combined = new Uint8Array([...iv, ...new Uint8Array(encrypted)]);
+  const encryptedBytes = new Uint8Array(encrypted);
+  const combined = new Uint8Array(iv.length + encryptedBytes.length);
+  combined.set(iv, 0);
+  combined.set(encryptedBytes, iv.length);
 
   return {
     encryptedPrivateKey: btoa(String.fromCharCode(...combined)),
     saltBase64: btoa(String.fromCharCode(...salt)),
   };
 }
+
+// export async function decryptPrivateKeyWithPassphrase(encryptedBase64, saltBase64, passphrase) {
+//   const enc = new TextEncoder();
+//   const dec = new TextDecoder();
+
+//   const encryptedBytes = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+//   const salt = Uint8Array.from(atob(saltBase64), c => c.charCodeAt(0));
+
+//   const iv = encryptedBytes.slice(0, 12);
+//   const data = encryptedBytes.slice(12);
+
+//   const keyMaterial = await window.crypto.subtle.importKey(
+//     'raw',
+//     enc.encode(passphrase),
+//     { name: 'PBKDF2' },
+//     false,
+//     ['deriveKey']
+//   );
+
+//   const aesKey = await window.crypto.subtle.deriveKey(
+//     {
+//       name: 'PBKDF2',
+//       salt,
+//       iterations: 100000,
+//       hash: 'SHA-256',
+//     },
+//     keyMaterial,
+//     { name: 'AES-GCM', length: 256 },
+//     false,
+//     ['decrypt']
+//   );
+
+//   const decrypted = await window.crypto.subtle.decrypt(
+//     { name: 'AES-GCM', iv },
+//     aesKey,
+//     data
+//   );
+
+//   return dec.decode(decrypted);
+// }

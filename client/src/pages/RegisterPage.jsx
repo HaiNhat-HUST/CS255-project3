@@ -35,12 +35,12 @@ function RegisterPage() {
     //         setError('Password must contain uppercase, lowercase, digit, special char and be at least 8 characters');
     //         return;
     //     }
-    if (formData.passphrase != formData.passphrase.length < 6) {
+    if (!formData.passphrase || formData.passphrase.length < 6) {
       setError('Please provide a strong passphrase for securing your file')
     }
     try {
-      const { publicKeyPem, privateKeyPam } = await generateUserKeyPair();
-      const { encryptedPrivateKey, saltBase64 } = await encryptedPrivateKey(privateKeyPam, formData.passphrase);
+      const { publicKeyPem, privateKeyPem } = await generateUserKeyPair();
+      const { encryptedPrivateKey, saltBase64 } = await encryptPrivateKeyWithPassphrase(privateKeyPem, formData.passphrase);
 
 
       const response = await fetch('http://localhost:5001/api/auth/register', {
@@ -52,9 +52,7 @@ function RegisterPage() {
           username: formData.username,
           email: formData.email,
           password: formData.password,
-          publicKey: publicKeyPem,
-          encryptedPrivateKey,
-          keySalt: saltBase64,
+          userPublicKey: publicKeyPem,
         }),
       });
 
@@ -65,14 +63,15 @@ function RegisterPage() {
         throw new Error(data.message || data.error || 'Server error during registration');
       }
 
-      // Store the token in localStorage
-      localStorage.setItem('token', data.token);
+      // Store the key  in localStorage
+      localStorage.setItem('encryptedPrivateKey', encryptedPrivateKey);
+      localStorage.setItem('keySalt', saltBase64);
 
-      const blob = new Blob([privateKeyPem], { type: 'text/plain' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'private_key.pem';
-      a.click();
+      // const blob = new Blob([privateKeyPem], { type: 'text/plain' });
+      // const a = document.createElement('a');
+      // a.href = URL.createObjectURL(blob);
+      // a.download = 'private_key.pem';
+      // a.click();
 
       navigate('/'); // Redirect to home page after successful registration
     } catch (err) {
