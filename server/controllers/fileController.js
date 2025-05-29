@@ -1,19 +1,19 @@
 // controllers/fileController.js
 const File = require('../models/File');
 const Folder = require('../models/Folder');
-const ShareToken = require('../models/ShareToken');
+//const ShareToken = require('../models/ShareToken');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { generateRSAKeyPair } = require('../utils/keyUtils');
-const AWS = require('aws-sdk');
+//const AWS = require('aws-sdk');
 
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-});
+// const s3 = new AWS.S3({
+//   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+//   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+// });
 
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads'); // Ensure this directory exists
 

@@ -27,3 +27,18 @@ exports.getUserPublicKeyByUsername = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+// Thêm nếu cần
+exports.generateAndSavePublicKey = async (req, res) => {
+  try {
+    const { userPublicKey } = req.body;
+    if (!userPublicKey) return res.status(400).json({ message: 'Public key is required' });
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    user.userPublicKey = userPublicKey;
+    await user.save();
+    res.status(200).json({ message: 'Public key updated', userPublicKey });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
