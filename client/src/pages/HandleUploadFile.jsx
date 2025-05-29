@@ -3,6 +3,7 @@ import CryptoJS from 'crypto-js';
 import JSEncrypt from 'jsencrypt';
 
 const HandleUploadFile = ({ onUploadSuccess }) => {
+  console.log('handleUpload called');
   const [file, setFile] = useState(null);
   const [userPublicKey, setUserPublicKey] = useState(null); // State để lưu public key
   const [error, setError] = useState(null); // State để lưu lỗi
