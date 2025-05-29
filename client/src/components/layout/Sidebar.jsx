@@ -1,13 +1,15 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { FaRegFileAlt, FaShareAlt, FaKey, FaShieldAlt, FaSignOutAlt } from 'react-icons/fa';
-// import logoImage from '../../assets/cryptafile-logo.png'; // If you have a logo
 import '../../index.css';
 
-const Sidebar = ({ activePage, onNavigate, onLogout}) => {
+const Sidebar = ({ onLogout }) => {
+  const location = useLocation();
+
   const navItems = [
-    { id: 'my-files', label: 'My Files', icon: <FaRegFileAlt /> },
-    { id: 'shared-with-me', label: 'Shared With Me', icon: <FaShareAlt /> },
-    { id: 'token-management', label: 'Token Management', icon: <FaKey /> },
+    { path: '/my-files', label: 'My Files', icon: <FaRegFileAlt /> },
+    { path: '/shared-with-me', label: 'Shared With Me', icon: <FaShareAlt /> },
+    { path: '/token-management', label: 'Token Management', icon: <FaKey /> },
   ];
 
   return (
@@ -20,25 +22,18 @@ const Sidebar = ({ activePage, onNavigate, onLogout}) => {
         <ul>
           {navItems.map((item) => (
             <li
-              key={item.id}
-              className={`sidebar-nav-item ${activePage === item.id ? 'active' : ''}`}
-              onClick={() => onNavigate(item.id)}
+              key={item.path}
+              className={`sidebar-nav-item ${location.pathname === item.path ? 'active' : ''}`}
             >
-              {item.icon}
-              <span>{item.label}</span>
+              <Link to={item.path}>
+                {item.icon}
+                <span>{item.label}</span>
+              </Link>
             </li>
           ))}
         </ul>
       </nav>
       <div className="sidebar-footer">
-        {/* <button className="login-button" onClick={onLogout}>
-          <FaSignOutAlt />
-          <span>Login</span>
-        </button>
-        <button className="register-button" onClick={onLogout}>
-          <FaSignOutAlt />
-          <span>Register</span>
-        </button> */}
         <button className="logout-button" onClick={onLogout}>
           <FaSignOutAlt />
           <span>Logout</span>

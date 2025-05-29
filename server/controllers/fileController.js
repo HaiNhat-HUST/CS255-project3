@@ -43,7 +43,7 @@
     
 //     //encrypt file with private key
 //     const encryptedData = Buffer.from(privateKey.encrypt(fileBuffer.toString('binary'), 'RSAES-PKCS1-V1_5'), 'binary');
-    
+
 //     //replace file with encrypted one
 //     fs.writeFileSync(filePath, encryptedData);
 
@@ -225,3 +225,4 @@
 //     res.status(500).json({ message: 'Server error creating folder', error: error.message });
 //   }
 // };
+
