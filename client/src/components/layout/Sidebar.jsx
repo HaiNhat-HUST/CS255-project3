@@ -3,7 +3,7 @@ import { FaRegFileAlt, FaShareAlt, FaKey, FaShieldAlt, FaSignOutAlt } from 'reac
 // import logoImage from '../../assets/cryptafile-logo.png'; // If you have a logo
 import '../../index.css';
 
-const Sidebar = ({ activePage, onNavigate, onLogout }) => {
+const Sidebar = ({ activePage, onNavigate, onLogout, onLogin, onRegister }) => {
   const navItems = [
     { id: 'my-files', label: 'My Files', icon: <FaRegFileAlt /> },
     { id: 'shared-with-me', label: 'Shared With Me', icon: <FaShareAlt /> },
@@ -31,6 +31,14 @@ const Sidebar = ({ activePage, onNavigate, onLogout }) => {
         </ul>
       </nav>
       <div className="sidebar-footer">
+        {/* <button className="login-button" onClick={onLogout}>
+          <FaSignOutAlt />
+          <span>Login</span>
+        </button>
+        <button className="register-button" onClick={onLogout}>
+          <FaSignOutAlt />
+          <span>Register</span>
+        </button> */}
         <button className="logout-button" onClick={onLogout}>
           <FaSignOutAlt />
           <span>Logout</span>

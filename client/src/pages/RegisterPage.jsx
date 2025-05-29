@@ -5,7 +5,7 @@ import '../styles/Auth.css';
 
 function RegisterPage() {
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -29,14 +29,19 @@ function RegisterPage() {
       return;
     }
 
+    // const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
+    //     if (!passwordRegex.test(form.password)) {
+    //         setError('Password must contain uppercase, lowercase, digit, special char and be at least 8 characters');
+    //         return;
+    //     }
     try {
-      const response = await fetch('http://localhost:3000/api/auth/register', {
+      const response = await fetch('http://localhost:5001/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: formData.name,
+          username: formData.username,
           email: formData.email,
           password: formData.password,
         }),
@@ -45,12 +50,13 @@ function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
+        console.error('Server error response:', data);
+        throw new Error(data.message || data.error || 'Server error during registration');
       }
 
       // Store the token in localStorage
       localStorage.setItem('token', data.token);
-      navigate('/'); // Redirect to home page after successful registration
+      navigate('/myfiles'); // Redirect to home page after successful registration
     } catch (err) {
       setError(err.message);
     }
@@ -66,15 +72,15 @@ function RegisterPage() {
         {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="name">Full Name</label>
+            <label htmlFor="username">User Name</label>
             <input
               type="text"
-              id="name"
-              name="name"
-              value={formData.name}
+              id="username"
+              name="username"
+              value={formData.username}
               onChange={handleChange}
               required
-              placeholder="Enter your full name"
+              placeholder="Enter your user name"
             />
           </div>
           <div className="form-group">

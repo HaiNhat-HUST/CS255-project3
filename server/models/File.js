@@ -42,18 +42,18 @@ const fileSchema = new mongoose.Schema({
     ref: 'Folder',
     default: null,
   },
-  Ko: {
+  KTTP: {//Half of public key
     type: String,
     required: false,
   },
-  KTTP: {
-    type: String,
-    required: false,
-  },
-  fullEncFileKey: {
-    type: String,
-    required: false,
-  },
+  accessList: [
+    {userId: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
+    permiss: {
+      type: String, 
+      enum: ['read', 'write'], 
+      default: 'read'}, 
+    },
+  ],
 }, { timestamps: true });
 
 const File = mongoose.model('File', fileSchema);
