@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaShieldAlt } from 'react-icons/fa';
 import '../styles/Auth.css';
 
-function LoginPage() {
+function LoginPage({onLoginSuccess}) {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -23,7 +23,7 @@ function LoginPage() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/login', {
+      const response = await fetch('http://localhost:5001/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -39,7 +39,8 @@ function LoginPage() {
 
       // Store the token in localStorage
       localStorage.setItem('token', data.token);
-      navigate('/'); // Redirect to home page after successful login
+      onLoginSuccess();
+      navigate('/myfiles'); // Redirect to home page after successful login
     } catch (err) {
       setError(err.message);
     }

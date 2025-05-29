@@ -90,7 +90,7 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.logout-button {
+.logout-button, .login-button, .register-button {
   width: 100%;
   padding: 12px;
   background-color: rgba(255, 255, 255, 0.1);
@@ -107,13 +107,13 @@ body {
   gap: 8px;
 }
 
-.logout-button:hover {
+.logout-button:hover, .login-button:hover, .register-button:hover {
   background-color: rgba(255, 255, 255, 0.15);
   color: white;
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-.logout-button:active {
+.logout-button:active, .login-button:active, .register-button:active {
   background-color: rgba(255, 255, 255, 0.2);
   transform: translateY(1px);
 }
