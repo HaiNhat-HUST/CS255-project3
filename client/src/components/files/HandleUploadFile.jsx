@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import CryptoJS from 'crypto-js';
+import AES from 'crypto-js/aes';
+import { enc, lib, mode, pad } from 'crypto-js';
 import JSEncrypt from 'jsencrypt';
-import 'crypto-js/lib-typedarrays'; // Ensure typed array support
 
 const HandleUploadFile = ({ onUploadSuccess }) => {
   const [file, setFile] = useState(null);
@@ -25,7 +25,7 @@ const HandleUploadFile = ({ onUploadSuccess }) => {
         const data = await response.json();
         setUserPublicKey(data.userPublicKey);
       } catch (err) {
-        console.error('Error fetching public key:', err.message);
+        console.error('Error fetching or generating public key:', err.message);
         setError(err.message);
       }
     };
@@ -47,34 +47,29 @@ const HandleUploadFile = ({ onUploadSuccess }) => {
     }
     try {
       const fileContent = await file.arrayBuffer();
-      if (!fileContent || fileContent.byteLength === 0) {
-        throw new Error('File content is empty or invalid');
-      }
-
-      const fsk = CryptoJS.lib.WordArray.random(32); // 256-bit key
-      const iv = CryptoJS.lib.WordArray.random(12); // 12 bytes for GCM
-      const wordArray = CryptoJS.lib.WordArray.create(fileContent);
-
-      const encrypted = CryptoJS.AES.encrypt(wordArray, fsk, {
+      const fsk = lib.WordArray.random(32); // Sửa: dùng lib thay vì CryptoJS.lib
+      const iv = lib.WordArray.random(12); // Sửa: dùng lib thay vì CryptoJS.lib
+      const wordArray = lib.WordArray.create(fileContent); // Sửa: dùng lib thay vì CryptoJS.lib
+      
+      const encrypted = AES.encrypt(wordArray, fsk, {
         iv: iv,
-        mode: CryptoJS.mode.GCM, // No padding for GCM
+        mode: mode.GCM,
+        padding: pad.Pkcs7,
       });
-
-      const encryptedData = encrypted.ciphertext.toString(CryptoJS.enc.Base64);
-
+      
+      const encryptedData = encrypted.ciphertext.toString(enc.Base64); // Sửa: dùng enc thay vì CryptoJS.enc
+      const authTag = encrypted.tag.toString(enc.Base64); // Lấy authTag từ encrypted.tag
+      
       const encrypt = new JSEncrypt();
       encrypt.setPublicKey(userPublicKey);
-      const fskBase64 = fsk.toString(CryptoJS.enc.Base64);
-      const fskEncrypted = encrypt.encrypt(fskBase64);
-      if (!fskEncrypted) {
-        throw new Error('RSA encryption of FSK failed');
-      }
-
-      const hash = CryptoJS.SHA256(wordArray).toString(CryptoJS.enc.Hex);
+      const fskEncrypted = encrypt.encrypt(fsk.toString(enc.Base64));
+    
+      const hash = enc.SHA256(wordArray).toString(enc.Hex); // Sửa: dùng enc thay vì CryptoJS.enc
 
       const formData = new FormData();
       formData.append('encryptedData', encryptedData);
-      formData.append('iv', iv.toString(CryptoJS.enc.Base64));
+      formData.append('iv', iv.toString(enc.Base64));
+      formData.append('authTag', authTag);
       formData.append('fskEncrypted', fskEncrypted);
       formData.append('hash', hash);
       formData.append('originalFilename', file.name);
@@ -100,13 +95,13 @@ const HandleUploadFile = ({ onUploadSuccess }) => {
       setFile(null);
       fileInputRef.current.value = null;
     } catch (error) {
-      console.error('Upload failed:', error.message, error.stack);
+      console.error('Upload failed:', error.message);
       alert('Upload failed: ' + error.message);
     }
   };
 
   if (error) return <div>Error: {error}. Please ensure you are logged in and try again.</div>;
-  if (!userPublicKey) return <div>Fetching public key...</div>;
+  if (!userPublicKey) return <div>Generating or fetching public key...</div>;
 
   return (
     <div>
