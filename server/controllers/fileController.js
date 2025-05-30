@@ -1,228 +1,213 @@
-// // controllers/fileController.js
-// const File = require('../models/File');
-// const Folder = require('../models/Folder');
-// const ShareToken = require('../models/ShareToken');
-// const path = require('path');
-// const fs = require('fs');
-// const { v4: uuidv4 } = require('uuid');
-// const crypto = require('crypto');
-// const bcrypt = require('bcryptjs');
-// const { generateRSAKeyPair } = require('../utils/keyUtils');
+// controllers/fileController.js
+const File = require('../models/File'); // Ensure this path is correct
+// const Folder = require('../models/Folder'); // Commented out as we're not using it for now
+const path = require('path');
+const fs = require('fs').promises;
 
-// const UPLOADS_DIR = path.join(__dirname, '..', 'uploads'); // Ensure this directory exists
+const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+(async () => {
+    try { await fs.mkdir(UPLOADS_DIR, { recursive: true }); }
+    catch (err) { console.error("Error creating uploads directory:", err); }
+})();
 
-// // @desc    Upload a new encrypted file
-// // @route   POST /api/files/upload
-// // @access  Private
-// exports.uploadFile = async (req, res) => {
-//   try {
-//     const { originalFilename, encryptedFileKey, iv, keyEncryptionIv, folderId } = req.body; // Metadata from client
-//     const file = req.file; // Uploaded encrypted blob from multer
+// @desc    Upload a new client-side encrypted file
+// @route   POST /api/files/upload
+// @access  Private
+exports.uploadFile = async (req, res) => {
+  const uploadedEncryptedFile = req.file;
 
-//     if (!file) {
-//       return res.status(400).json({ message: 'No file uploaded' });
-//     }
-//     if (!originalFilename || !encryptedFileKey || !iv || !keyEncryptionIv) {
-//       return res.status(400).json({ message: 'Missing required file metadata' });
-//     }
+  try {
+    const {
+      originalName,
+      fileSize,
+      mimeType,
+      initializationVector,
+      authenticationTag,
+      fileHash,
+      encryptedFileSymmetricKey,
+      // folderId, // Commented out folderId from destructuring
+    } = req.body;
 
-//     // Check if parent folder exists and belongs to the user (if folderId is provided)
-//     if (folderId) {
-//         const parentFolder = await Folder.findOne({ _id: folderId, owner: req.user.id });
-//         if (!parentFolder) {
-//             // Clean up uploaded file if folder is invalid
-//             fs.unlinkSync(file.path);
-//             return res.status(404).json({ message: 'Parent folder not found or access denied' });
-//         }
-//     }
-//     //load file buffer
-//     const fileBuffer = fs.readFileSync(file.path);
+    if (!uploadedEncryptedFile) {
+      return res.status(400).json({ message: 'No encrypted file data (Fen) uploaded.' });
+    }
+    const requiredFields = { originalName, fileSize, mimeType, initializationVector, authenticationTag, fileHash, encryptedFileSymmetricKey };
+    for (const [key, value] of Object.entries(requiredFields)) {
+      if (!value) {
+        if (uploadedEncryptedFile && uploadedEncryptedFile.path) {
+            try { await fs.unlink(uploadedEncryptedFile.path); } catch(e) { console.error("Cleanup error", e); }
+        }
+        return res.status(400).json({ message: `Missing required metadata: ${key}` });
+      }
+    }
 
-//     //gen RSA key pair
-//     const {privateKey, publicKeyOwnerPart, publicKeyTTPPart} = generateRSAKeyPair();
-    
-//     //encrypt file with private key
-//     const encryptedData = Buffer.from(privateKey.encrypt(fileBuffer.toString('binary'), 'RSAES-PKCS1-V1_5'), 'binary');
+    // --- Folder check commented out ---
+    // if (folderId && folderId !== 'null') {
+    //     const parentFolder = await Folder.findOne({ _id: folderId, owner: req.user.id });
+    //     if (!parentFolder) {
+    //         if (uploadedEncryptedFile && uploadedEncryptedFile.path) {
+    //             try { await fs.unlink(uploadedEncryptedFile.path); } catch(e) { console.error("Cleanup error", e); }
+    //         }
+    //         return res.status(404).json({ message: 'Parent folder not found or access denied.' });
+    //     }
+    // }
 
-//     //replace file with encrypted one
-//     fs.writeFileSync(filePath, encryptedData);
+    // Log to confirm File is what we expect
+    // console.log("Using File constructor:", File);
+
+    const newFile = new File({ // This should now work if 'File' is correctly imported
+      owner: req.user.id,
+      originalName,
+      encryptedName: uploadedEncryptedFile.filename,
+      fileSize: parseInt(fileSize, 10),
+      mimeType,
+      storagePath: uploadedEncryptedFile.path,
+      initializationVector,
+      authenticationTag,
+      fileHash,
+      encryptedFileSymmetricKey,
+      folder: null, // Explicitly set to null as we are ignoring folders for now
+      isShared: false,
+    });
+
+    await newFile.save();
+
+    res.status(201).json({
+      message: 'File uploaded successfully.',
+      file: {
+        _id: newFile._id,
+        originalName: newFile.originalName,
+        fileSize: newFile.fileSize,
+        createdAt: newFile.createdAt,
+      },
+    });
+
+  } catch (error) {
+    console.error('File Upload Error:', error); // This will show the TypeError if File is still not a constructor
+    if (uploadedEncryptedFile && uploadedEncryptedFile.path) {
+      try {
+        await fs.unlink(uploadedEncryptedFile.path);
+        console.log("Cleaned up uploaded file due to error:", uploadedEncryptedFile.path);
+      } catch (unlinkErr) {
+        console.error('Error deleting orphaned uploaded file:', unlinkErr);
+      }
+    }
+    if (error.code === 11000 && error.keyPattern && error.keyPattern.encryptedName) {
+        return res.status(500).json({ message: "Internal error: generated encrypted name conflict. Please try again."});
+    }
+    // Updated index for files at root level (folder: null)
+     if (error.code === 11000 && error.message.includes('owner_1_originalName_1')) {
+        return res.status(400).json({ message: `A file named "${req.body.originalName}" already exists at the root level.` });
+    }
+    res.status(500).json({ message: 'Server error during file upload.', error: error.message });
+  }
+};
+
+// controllers/fileController.js
+
+// @desc    List files for the current user (root level only for now)
+// @route   GET /api/files
+// @access  Private
+exports.listFiles = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) { // Added check for req.user
+        console.error('ListFiles Error: req.user not defined. Auth middleware issue?');
+        return res.status(401).json({ message: "Not authorized, user information missing." });
+    }
+
+    console.log(`Fetching files for user: ${req.user.id}`); // Debug log
+
+    const files = await File.find({ owner: req.user.id, folder: null }) // Corrected 'uploader' to 'owner'
+                            .select('originalName mimeType fileSize createdAt _id fileHash') // Added fileHash
+                            .sort({ createdAt: -1 });
+
+    console.log(`Found ${files.length} files for user ${req.user.id}`); // Debug log
+
+    res.json({ files, folders: [] }); // Return empty array for folders for now
+  } catch (error) {
+    console.error('List Files Error:', error);
+    res.status(500).json({ message: 'Server error listing files', error: error.message });
+  }
+};
 
 
-//     const newFile = new File({
-//       originalFilename,
-//       encryptedFilename: file.filename, // Multer provides this unique filename
-//       mimeType: file.mimetype,
-//       size: file.size, // This is the size of the encrypted blob, client should send original size too if needed for display
-//       encryptedFileKey,
-//       iv,
-//       keyEncryptionIv,
-//       uploader: req.user.id,
-//       folder: folderId || null,
-//       KTTP: publicKeyTTPPart
-//     });
+exports.prepareForDownload = async (req, res) => {
+    try {
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({ message: "Not authorized, user information missing." });
+        }
 
-//     await newFile.save();
-//     res.status(201).json({
-//         message: 'File uploaded successfully',
-//         file: {
-//             _id: newFile._id,
-//             originalFilename: newFile.originalFilename,
-//             mimeType: newFile.mimeType,
-//             size: newFile.size, // Consider sending original size from client
-//             createdAt: newFile.createdAt,
-//             folder: newFile.folder,
-//             ko: publicKeyOwnerPart // storage in local
-//         }
-//     });
-//   } catch (error) {
-//     console.error('Upload Error:', error);
-//     // If a file was uploaded and an error occurred, try to delete it
-//     if (req.file && req.file.path) {
-//       try {
-//         fs.unlinkSync(req.file.path);
-//       } catch (unlinkErr) {
-//         console.error('Error deleting orphaned upload file:', unlinkErr);
-//       }
-//     }
-//     res.status(500).json({ message: 'Server error during file upload', error: error.message });
-//   }
-// };
+        const file = await File.findOne({ _id: req.params.fileId, owner: req.user.id })
+            .select('encryptedName originalName mimeType storagePath initializationVector authenticationTag encryptedFileSymmetricKey fileHash'); // Selected all necessary fields
 
-// // @desc    List files and folders for the current user
-// // @route   GET /api/files
-// // @access  Private (query params: ?folderId=xxx for specific folder, null for root)
-// exports.listFilesAndFolders = async (req, res) => {
-//   try {
-//     const { folderId } = req.query; // parent folder ID or null/undefined for root
-//     const parentFolderQuery = folderId === 'null' || !folderId ? null : folderId;
+        if (!file) {
+            return res.status(404).json({ message: 'File not found or access denied.' });
+        }
+        res.json({
+            fileId: file._id, // Good to send back for confirmation
+            encryptedName: file.encryptedName, // Crucial for fetching the blob
+            originalName: file.originalName,
+            mimeType: file.mimeType,
+            // storagePath: file.storagePath, // Client doesn't strictly need this if encryptedName is the key
+            initializationVector: file.initializationVector,
+            authenticationTag: file.authenticationTag,
+            encryptedFileSymmetricKey: file.encryptedFileSymmetricKey, // FSK_encrypted
+            fileHash: file.fileHash, // For client-side integrity check
+        });
+    } catch (error) {
+        console.error("Prepare Download Error:", error);
+        if (error.kind === 'ObjectId') {
+             return res.status(404).json({ message: 'File not found (invalid ID format)' });
+        }
+        res.status(500).json({ message: 'Server error preparing file for download.', error: error.message });
+    }
+};
 
-//     // Validate folderId if provided
-//     if (parentFolderQuery) {
-//         const parent = await Folder.findOne({ _id: parentFolderQuery, owner: req.user.id });
-//         if (!parent) {
-//             return res.status(404).json({ message: "Parent folder not found or access denied" });
-//         }
-//     }
+// @desc    Download an encrypted file blob (Fen)
+// @route   GET /api/files/blobs/:encryptedName
+// @access  Private
+exports.downloadEncryptedBlob = async (req, res) => {
+    try {
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({ message: "Not authorized, user information missing." });
+        }
 
-//     const files = await File.find({ uploader: req.user.id, folder: parentFolderQuery })
-//                             .select('originalFilename mimeType size createdAt _id folder')
-//                             .sort({ createdAt: -1 });
+        // Query for the file using its encryptedName AND ensure the current user is the owner.
+        // This prevents a user from trying to guess encryptedNames if they somehow bypass
+        // the /prepare-download step or if that step didn't have strict enough checks.
+        const fileRecord = await File.findOne({
+            encryptedName: req.params.encryptedName,
+            owner: req.user.id
+        });
 
-//     const folders = await Folder.find({ owner: req.user.id, parentFolder: parentFolderQuery })
-//                               .select('name createdAt _id parentFolder')
-//                               .sort({ name: 1 });
+        if (!fileRecord) {
+             // This means either the file doesn't exist by that encryptedName,
+             // OR the currently authenticated user does not own it.
+             return res.status(404).json({ message: 'Encrypted blob not found or access denied.' });
+        }
 
-//     res.json({ files, folders });
-//   } catch (error) {
-//     console.error('List Error:', error);
-//     res.status(500).json({ message: 'Server error listing files/folders', error: error.message });
-//   }
-// };
+        // The 'storagePath' field in your File model stores the full path given by Multer.
+        // If UPLOADS_DIR is the root and encryptedName is just the filename:
+        // const filePath = path.join(UPLOADS_DIR, fileRecord.encryptedName);
+        // However, your upload function stores uploadedEncryptedFile.path in fileRecord.storagePath:
+        // storagePath: uploadedEncryptedFile.path,
+        // So, we should use fileRecord.storagePath directly.
+        const filePath = fileRecord.storagePath;
 
 
-// // @desc    Get metadata for a specific file (for decryption)
-// // @route   GET /api/files/:fileId/metadata
-// // @access  Private
-// exports.getFileMetadata = async (req, res) => {
-//     try {
-//         const file = await File.findOne({ _id: req.params.fileId, uploader: req.user.id })
-//                                .select('originalFilename mimeType encryptedFileKey iv keyEncryptionIv size'); // Add any other needed fields
-
-//         if (!file) {
-//             return res.status(404).json({ message: 'File not found or access denied' });
-//         }
-//         res.json(file);
-//     } catch (error) {
-//         console.error('Get File Metadata Error:', error);
-//         if (error.kind === 'ObjectId') {
-//             return res.status(404).json({ message: 'File not found (invalid ID format)' });
-//         }
-//         res.status(500).json({ message: 'Server error', error: error.message });
-//     }
-// };
-
-// // @desc    Download an encrypted file
-// // @route   GET /api/files/:fileId/download
-// // @access  Private
-// exports.downloadFile = async (req, res) => {
-//   try {
-//     const file = await File.findOne({ _id: req.params.fileId, uploader: req.user.id });
-
-//     if (!file) {
-//       return res.status(404).json({ message: 'File not found or access denied' });
-//     }
-
-//     const filePath = path.join(UPLOADS_DIR, file.encryptedFilename);
-
-//     if (fs.existsSync(filePath)) {
-//       res.setHeader('Content-Disposition', `attachment; filename="${file.originalFilename}"`); // Suggest original name to client
-//       res.setHeader('Content-Type', file.mimeType); // Set original mime type
-//       res.download(filePath, file.originalFilename); // Serves the file
-//     } else {
-//       res.status(404).json({ message: 'File data not found on server' });
-//     }
-//   } catch (error) {
-//     console.error('Download Error:', error);
-//     if (error.kind === 'ObjectId') {
-//         return res.status(404).json({ message: 'File not found (invalid ID format)' });
-//     }
-//     res.status(500).json({ message: 'Server error during file download', error: error.message });
-//   }
-// };
-
-// // @desc    Create a new folder
-// // @route   POST /api/folders
-// // @access  Private
-// exports.createFolder = async (req, res) => {
-//   try {
-//     const { name, parentFolderId } = req.body;
-//     if (!name) {
-//       return res.status(400).json({ message: 'Folder name is required' });
-//     }
-
-//     const parentQuery = parentFolderId === 'null' || !parentFolderId ? null : parentFolderId;
-
-//     // Check if parent folder exists and belongs to user (if specified)
-//     if (parentQuery) {
-//         const parent = await Folder.findOne({ _id: parentQuery, owner: req.user.id });
-//         if (!parent) {
-//             return res.status(404).json({ message: "Parent folder not found or access denied" });
-//         }
-//     }
-
-//     // Check for duplicate folder name in the same location for this user
-//     const existingFolder = await Folder.findOne({
-//         name,
-//         owner: req.user.id,
-//         parentFolder: parentQuery
-//     });
-
-//     if (existingFolder) {
-//         return res.status(400).json({ message: `Folder "${name}" already exists in this location.` });
-//     }
-
-//     const newFolder = new Folder({
-//       name,
-//       owner: req.user.id,
-//       parentFolder: parentQuery,
-//     });
-
-//     await newFolder.save();
-//     res.status(201).json({
-//         message: 'Folder created successfully',
-//         folder: {
-//             _id: newFolder._id,
-//             name: newFolder.name,
-//             parentFolder: newFolder.parentFolder,
-//             createdAt: newFolder.createdAt
-//         }
-//     });
-//   } catch (error) {
-//     console.error('Create Folder Error:', error);
-//     if (error.code === 11000) { // Duplicate key error
-//         return res.status(400).json({ message: `A folder with that name already exists in this location.` });
-//     }
-//     res.status(500).json({ message: 'Server error creating folder', error: error.message });
-//   }
-// };
-
+        // Check if file exists before sending
+        try {
+            await fs.access(filePath); // Check if file exists and is accessible
+            res.setHeader('Content-Disposition', `attachment; filename="${fileRecord.originalName}.encrypted"`); // Suggest a name
+            res.setHeader('Content-Type', 'application/octet-stream'); // It's an opaque encrypted blob
+            res.sendFile(filePath); // Serves the file from its stored path
+        } catch (fileAccessError) {
+            console.error(`File blob access error for ${filePath}:`, fileAccessError);
+            // This could happen if the file was deleted from disk but the DB record still exists.
+            res.status(404).json({ message: 'Encrypted file data not found on server disk.' });
+        }
+    } catch (error) {
+        console.error("Download Blob Error:", error);
+        res.status(500).json({ message: 'Server error during blob download.', error: error.message });
+    }
+};

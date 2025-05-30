@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaShieldAlt } from 'react-icons/fa';
 import '../styles/Auth.css';
-import { generateUserKeyPair, encryptPrivateKeyWithPassphrase } from '../../utils/keyUtils';
+import { generateUserKeyPair, encryptPrivateKeyWithPassphrase } from '../utils/keyUtils';
 function RegisterPage() {
   const [formData, setFormData] = useState({
     username: '',

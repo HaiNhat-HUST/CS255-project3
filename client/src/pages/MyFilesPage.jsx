@@ -1,64 +1,87 @@
+// src/pages/MyFilesPage.jsx
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import * as keyManager from '../services/keyManager';
 import FileBrowserControls from '../components/files/FileBrowserControls';
 import FileGrid from '../components/files/FileGrid';
-
-// Mock data (replace with API call)
-const mockFilesData = [
-  { id: 'folder1', type: 'folder', name: 'Documents', itemCount: 2 },
-  { id: 'folder2', type: 'folder', name: 'Photos', itemCount: 1 },
-  { id: 'file1', type: 'file', name: 'presentation_final_v2_really_long_name.pptx', size: '128 MB', date: '2023-10-20' },
-  { id: 'file2', type: 'file', name: 'archive.zip', size: '25 MB', date: '2023-10-18' },
-  { id: 'folder3', type: 'folder', name: 'source_code', itemCount: 1 },
-  { id: 'file3', type: 'file', name: 'project_report.pdf', size: '2.5 MB', date: '2023-10-15' },
-  { id: 'file4', type: 'file', name: 'logo.png', size: '350 KB', date: '2023-10-12' },
-  { id: 'file5', type: 'file', name: 'notes.txt', size: '10 KB', date: '2023-10-10' },
-];
-
+import KeySetupModal from '../components/auth/KeySetupModal';
+import api from '../services/api';
 
 const MyFilesPage = () => {
-  const [items, setItems] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const { userInfo, isAuthenticated, updateUserProfile } = useAuth();
+  const [files, setFiles] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isKeySetupModalOpen, setIsKeySetupModalOpen] = useState(false);
+  const [pageError, setPageError] = useState('');
 
-  useEffect(() => {
-    // Simulate fetching data
-    // In a real app, fetch from your API here
-    setItems(mockFilesData);
-  }, []);
-
-  const handleSearchChange = (term) => {
-    setSearchTerm(term);
-    // Basic client-side filtering for demo
-    if (!term) {
-      setItems(mockFilesData);
-    } else {
-      const filtered = mockFilesData.filter(item =>
-        item.name.toLowerCase().includes(term.toLowerCase())
-      );
-      setItems(filtered);
+  const fetchFiles = async () => {
+    setIsLoading(true);
+    setPageError('');
+    try {
+      const response = await api.get('/files'); // Backend should return root files
+      setFiles(response.data.files || []);
+    } catch (error) {
+      console.error("Failed to fetch files:", error);
+      setPageError(error.response?.data?.message || error.message || "Could not load files.");
+      setFiles([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleFilter = () => alert('Filter clicked!');
-  const handleCreateFolder = () => alert('Create Folder clicked!');
-  const handleUploadFile = () => alert('Upload File clicked!');
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchFiles();
+      const localPKExists = keyManager.hasLocalPrivateKey();
+      if (!userInfo?.userPublicKey && !localPKExists) {
+        setIsKeySetupModalOpen(true);
+      } else if (userInfo?.userPublicKey && !localPKExists) {
+        setPageError("Security Alert: Your private key is not found locally on this device. You can upload new files, but you won't be able to download/view existing ones until you set up your keys on this device. Re-setting up keys will make prior data inaccessible without the original key passphrase.");
+      }
+    } else {
+      setFiles([]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, userInfo?.userPublicKey]); // Rerun if auth or publicKey status changes
+
+  const handleFileUploaded = (newUploadedFile) => {
+    fetchFiles(); // Re-fetch the list to include the new file and ensure consistency
+  };
+
+  const handleKeySetupModalClose = async () => {
+    setIsKeySetupModalOpen(false);
+    if (isAuthenticated) {
+        try {
+            const response = await api.get('/auth/me'); // Fetch updated profile
+            // Assuming login can also be used to update context or have a dedicated update
+            const { token } = userInfo; // Keep existing token from AuthContext
+            updateUserProfile({ ...response.data, token }); // Update AuthContext
+        } catch (err) {
+            console.error("Failed to refresh user profile after key setup", err);
+            setPageError("Failed to refresh profile after key setup. Please try logging out and back in.");
+        }
+        fetchFiles(); // Re-fetch files
+    }
+  };
 
   return (
     <>
       <div className="page-header">
         <h1>My Files</h1>
-        <p>Browse, upload, and manage your files and folders.</p>
+        <p>Browse, upload, and manage your encrypted files.</p>
       </div>
+      {pageError && <p className="page-error-banner">{pageError}</p>} {/* Add CSS for .page-error-banner */}
 
-      <FileBrowserControls
-        onSearchChange={handleSearchChange}
-        onFilter={handleFilter}
-        onCreateFolder={handleCreateFolder}
-        onUploadFile={handleUploadFile}
-      />
+      <FileBrowserControls onFileUploaded={handleFileUploaded} />
 
-      <FileGrid items={items} />
+      {isLoading ? (
+        <p>Loading your encrypted files...</p>
+      ) : (
+        <FileGrid items={files} /> // FileGrid now only expects file items
+      )}
+
+      <KeySetupModal isOpen={isKeySetupModalOpen} onClose={handleKeySetupModalClose} />
     </>
   );
 };
-
 export default MyFilesPage;

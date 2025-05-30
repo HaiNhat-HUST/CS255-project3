@@ -4,10 +4,11 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const path = require('path');
+const morgan = require('morgan');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
-// const fileRoutes = require('./routes/fileRoutes'); // <--- Add this
+const fileRoutes = require('./routes/fileRoutes'); 
 // const shareRoutes = require('./routes/shareRoutes'); // <--- Add this
 
 
@@ -17,10 +18,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(morgan('dev'));
 // API Routes
 app.use('/api/auth', authRoutes);
-// app.use('/api/files', fileRoutes); // <--- Use file routes
+app.use('/api/files', fileRoutes); // <--- Use file routes
 // app.use('/api/share', shareRoutes); // <--- Use share routes
 
 

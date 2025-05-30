@@ -433,3 +433,37 @@ body {
   color: #6c757d;
   max-width: 400px;
 }
+
+.item-actions .action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 1.1em; /* Slightly larger icons */
+  color: #555;
+  transition: color 0.2s ease;
+}
+.item-actions .action-btn:hover {
+  color: #4a148c; /* Theme purple */
+}
+.item-actions .action-btn:disabled {
+  color: #bbb;
+  cursor: not-allowed;
+}
+.item-status-display {
+  font-size: 0.8em;
+  margin: 2px 0 5px 55px; /* Align under icon roughly */
+  padding-left: 5px;
+}
+.item-status-display .status-text { margin: 0; color: #333; }
+.item-status-display .error-text { margin: 0; color: red; }
+
+
+.page-error-banner {
+  color: #721c24; /* Dark red */
+  background-color: #f8d7da; /* Light red */
+  border: 1px solid #f5c6cb; /* Medium red */
+  padding: 10px 15px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
